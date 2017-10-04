@@ -18,8 +18,7 @@ import thewaroftank.program.Tank;
  */
 public interface Config {
 
-//	public static final String FOLDER_PATH = WarOfTank.class.getResource("").getPath();// 程序主文件所在文件夹路径
-	public static final String FOLDER_PATH = "E:/Java学习-动力节点/712班/MyPractice/TheWarOfTank/bin/thewaroftank/";
+	public static final String FOLDER_PATH = WarOfTank.class.getResource("").getPath();// 程序主文件所在文件夹路径
 	public static final String IMAGE_FILE_PATH = FOLDER_PATH + "image/";// 图片文件路径
 	public static final String SOUND_FILE_PATH = FOLDER_PATH + "Sounds/";// 声音文件路径
 	public static final Dimension SYSTEM_SCREEN_SIZE = Toolkit.getDefaultToolkit().getScreenSize();// 系统屏幕像素尺寸
