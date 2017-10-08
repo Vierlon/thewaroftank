@@ -1,4 +1,4 @@
-package thewaroftank.gui;
+package bin.gui;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -6,12 +6,12 @@ import java.awt.Graphics;
 
 import javax.swing.JPanel;
 
-import thewaroftank.config.Config;
+import config.Config;
 
 /**
- * <li>游戏启动初始面板
- * <li>只会显示一次,开始游戏后置空引用,关闭线程
- * @author Yun-Long
+ * 游戏启动初始面板
+ * 
+ * @author WuYaoLong
  *
  */
 public class StartPanel extends JPanel implements Runnable {
@@ -31,6 +31,7 @@ public class StartPanel extends JPanel implements Runnable {
 			sp = new StartPanel();
 			sp.setBackground(Config.PANEL_BG_COLOR);
 			new Thread(sp).start();
+			System.out.println("--->构造StartPanel<---");
 		}
 		return sp;
 	}
