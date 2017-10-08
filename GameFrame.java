@@ -1,13 +1,16 @@
-package thewaroftank.gui;
+package bin.gui;
 
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
-import thewaroftank.config.Config;
+import config.Config;
+import config.RW_GameConfig;
 
 /**
- * 游戏窗口生成类
- * @author Yun-Long
+ * 游戏窗口
+ * 
+ * @author WuYaoLong
  *
  */
 public class GameFrame {
@@ -17,6 +20,7 @@ public class GameFrame {
 	public static JFrame getGameFrame() {
 		if(mainFrame == null) {
 			new GameFrame();
+			System.out.println("--->构造GameFrame<---");
 		}
 		return mainFrame;
 	}
@@ -25,7 +29,7 @@ public class GameFrame {
 		mainFrame = new JFrame();
 		mainFrame.setTitle("坦克大战");
 		mainFrame.setAlwaysOnTop(true);//设置窗体总在最上层
-		mainFrame.setIconImage(new ImageIcon(Config.IMAGE_FILE_PATH+"Tank.png").getImage());//设置图标
+		mainFrame.setIconImage(new ImageIcon(Config.FOLDER_PATH+"/bin/Tank.png").getImage());//设置图标
 		mainFrame.setBounds(Config.SYSTEM_SCREEN_SIZE.width/2-Config.GAME_FRAME_W/2,
 				Config.SYSTEM_SCREEN_SIZE.height/2-Config.GAME_FRAME_H/2,
 				Config.GAME_FRAME_W,Config.GAME_FRAME_H);//设置窗体初始位置为屏幕正中间
@@ -37,6 +41,10 @@ public class GameFrame {
 		mainFrame.addMouseListener(gcl);//注册鼠标点击侦听器
 		mainFrame.addMouseMotionListener(gcl);//窗体拖动侦听
 		mainFrame.add(StartPanel.showStartPanel());
+		//读取游戏配置信息
+		if(!RW_GameConfig.load()) {
+			JOptionPane.showMessageDialog(GameFrame.getGameFrame(), "读取游戏配置失败,将使用默认配置!", "警告", JOptionPane.WARNING_MESSAGE);
+		}
 	}
 	
 }
