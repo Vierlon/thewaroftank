@@ -1,15 +1,27 @@
-package thewaroftank.program;
+package bin;
 
+import java.applet.Applet;
 import java.awt.Graphics;
+import java.io.Serializable;
 
-import thewaroftank.config.Config;
-import thewaroftank.gui.GameControlListener;
-import thewaroftank.program.Players;
-import thewaroftank.program.enums.BulletMode;
-import thewaroftank.program.enums.Direction;
+import bin.Players;
+import bin.enums.BulletMode;
+import bin.enums.Direction;
+import bin.gui.GameControlListener;
+import config.Config;
 
-public class Bullet extends GameElements implements Runnable {
+/**
+ * 子弹类
+ * 
+ * @author WuYaoLong
+ *
+ */
+public class Bullet extends GameElements implements Runnable,Serializable {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2017100518L;
 	private int speed; // 子弹速度初始为2
 	private boolean moveEnable;
 	private Direction direction;
@@ -36,12 +48,12 @@ public class Bullet extends GameElements implements Runnable {
 	 * @param dir
 	 *            射击方向
 	 */
-	public Bullet(int x, int y, Direction dir) {
-		this.setX(x);
-		this.setY(y);
-		this.setHealth(1); // 设置子弹默认生命值为1
-		this.direction = dir;
-	}
+//	public Bullet(int x, int y, Direction dir) {
+//		this.setX(x);
+//		this.setY(y);
+//		this.setHealth(1); // 设置子弹默认生命值为1
+//		this.direction = dir;
+//	}
 
 	/**
 	 * 子弹移动方法
@@ -128,11 +140,16 @@ public class Bullet extends GameElements implements Runnable {
 				}
 			}
 			//以下为子弹击中有效目标的处理
+			if(this.owner != null && Config.JIZHONG != null) {
+				Applet.newAudioClip(Config.JIZHONG).play(); //播放击中声音
+			}
 			if (owner == null ^ tk.getOwner() == null) { // 子弹与坦克阵营不同则坦克扣减减HP
 				tk.setHealth(tk.getHealth() - 1);
 				if (tk.getHealth() == 0) {
+					if (Config.BAOZHA != null) {
+						Applet.newAudioClip(Config.BAOZHA).play(); //播放爆炸声音
+					}
 					if (owner != null) {
-//						ElementFactory.num--; //PC坦克死亡数量减1
 						owner.setScore(tk); // 玩家击毁计分
 						System.out.println("玩家击毁得分:"+owner); //测试玩家分数,生命计算
 					}
@@ -187,15 +204,16 @@ public class Bullet extends GameElements implements Runnable {
 			}
 		}
 		Config.BULLETS_SET.remove(this); //子弹生命为0后从集合中移除自己
+//		try {
+//			Thread.sleep(100);
+//		} catch (InterruptedException e) {}
+//		if(jizhong != null) {
+//			jizhong.stop();
+//		}
+//		if(baozha != null) {
+//			baozha.stop();
+//		}
 	}
-
-	// public int getSpeed() {
-	// return speed;
-	// }
-
-	// public void setSpeed(int speed) {
-	// this.speed = speed;
-	// }
 
 	public Direction getDirection() {
 		return direction;
