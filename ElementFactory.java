@@ -1,21 +1,22 @@
-package thewaroftank.program;
+package bin;
 
+import java.awt.Color;
 import java.util.Random;
 import java.util.Vector;
 
-import thewaroftank.config.Config;
-import thewaroftank.gui.GameControlListener;
-import thewaroftank.program.enums.Direction;
-import thewaroftank.program.enums.Player;
+import bin.enums.Direction;
+import bin.enums.Player;
+import bin.gui.GameControlListener;
+import config.Config;
 
 /**
  * 元素工厂线程类
  * (目前只生产坦克)
- * @author Yun-Long
+ * @author WuYaoLong
  */
 public class ElementFactory implements Runnable {
 	
-	public static volatile int level = 1; //当前关卡数
+	private volatile int level; //当前关卡数
 	private Vector<Tank> set = Config.TANK_SET;
 	private Random rd = Config.RD;
 	private Tank tank_PL1 = null; //玩家1坦克引用
@@ -27,6 +28,7 @@ public class ElementFactory implements Runnable {
 	public static ElementFactory createEF() { //懒汉单例,只许存在一个工厂
 		if(ef == null) {
 			ef = new ElementFactory();
+			System.out.println("--->构造ElementFactory<---");
 		}
 		return ef;
 	}
@@ -45,8 +47,14 @@ public class ElementFactory implements Runnable {
 				continue;
 			}
 			System.out.println("--->进入第 "+level+" 关<---"); //测试关卡开始
-			this.productPCTank(); //生产当前关卡坦克
-			System.out.println("--->第 "+level+" 关坦克大军准备完成,总数: "+(set.size()-2)); //测试PC坦克生产
+			if(GameControlListener.isReaded) {
+				tank_PL1 = set.get(0);
+				tank_PL2 = set.get(1);
+				GameControlListener.isReaded = false;
+			}else {
+				this.productPCTank(); //生产当前关卡坦克
+			}
+			System.out.println("--->第 "+level+" 关坦克大军准备完成,数量: "+(set.size()-2)); //测试PC坦克生产
 			while(GameControlListener.flag) {
 				if(GameControlListener.isPause) {
 					try {
@@ -54,7 +62,7 @@ public class ElementFactory implements Runnable {
 					}catch (InterruptedException e) {}
 					continue;
 				}
-				for(int i = 2;i < set.size();i++) { //每5秒出一辆PC坦克(未实现随机)
+				for(int i = 2;i < set.size();i++) { //按时间间隔放出PC坦克
 					if(!GameControlListener.flag) {
 						break;
 					}
@@ -67,9 +75,7 @@ public class ElementFactory implements Runnable {
 					if(tk != null && !tk.isVisible()) { //放出剩余(不可见)PC坦克
 						try {
 							Thread.sleep(level<8?5000:7000); //8关前间隔5秒,之后间隔7秒
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
+						} catch (InterruptedException e) {}
 						tk.setVisible(true);
 						tk.setMoveEnable(true);
 						tk.setFireEnable(true);
@@ -102,34 +108,6 @@ public class ElementFactory implements Runnable {
 //			break;//测试第一关
 		}
 		System.out.println("--->productPCTK线程结束<---");
-	}
-
-	/**
-	 * 初始化玩家坦克,并将两个玩家坦克放入集合
-	 * 
-	 * @return 返回可用玩家坦克
-	 * @param pl 玩家对象
-	 */
-	public Tank getPlayerTank(Players pl) {
-		pl.setLifes(3); //初始化玩家生命数
-		pl.setScore(0); //初始化玩家得分
-		if(pl.getPL() == Player.PL1) {
-			int sp = level<8?2:(level<12?3:4);
-			tank_PL1 = new Tank(Config.P1_INIT_X, Config.P_INTI_Y, 3, sp, true, false,
-					Config.TANK_COLOR_2, Direction.UP); //玩家1坦克
-			tank_PL2 = new Tank(Config.P2_INIT_X, Config.P_INTI_Y, 3, sp, false, false,
-					Config.TANK_COLOR_2, Direction.UP); //玩家2坦克
-			set.add(0, tank_PL1);// 固定玩家坦克存放位置
-			set.add(1, tank_PL2);
-			tank_PL1.setOwner(pl);
-			tank_PL1.setVisible(true);
-			return tank_PL1;
-		}else {
-			tank_PL2.setOwner(pl);
-			tank_PL2.setMoveEnable(true);
-			tank_PL2.setVisible(true);
-			return tank_PL2;
-		}
 	}
 
 	/**
@@ -210,5 +188,13 @@ public class ElementFactory implements Runnable {
 				set.add(new Tank(x,y,hp,sp,false,false,tkColor,dir));
 			}
 		}
+	}
+
+	public int getLevel() {
+		return level;
+	}
+
+	public void setLevel(int level) {
+		this.level = level;
 	}
 }
