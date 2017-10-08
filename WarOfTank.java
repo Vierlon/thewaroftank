@@ -4,7 +4,8 @@ import thewaroftank.gui.GameFrame;
 
 /**
  * 游戏启动入口
- * @author Yun-Long
+ 
+ * @author WuYaoLong
  *
  */
 public class WarOfTank {
