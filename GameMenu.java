@@ -1,12 +1,12 @@
-package thewaroftank.gui;
+package bin.gui;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 
 /**
- * 游戏菜单绘制类
+ * 游戏菜单
  * 
- * @author Yun-Long
+ * @author WuYaoLong
  *
  */
 public class GameMenu {
@@ -20,6 +20,7 @@ public class GameMenu {
 	public static JPopupMenu showMenu() {
 		if (gameMenu == null) {
 			new GameMenu();
+			System.out.println("--->构造GameMenu<---");
 		}
 		return gameMenu;
 	}
@@ -38,7 +39,7 @@ public class GameMenu {
 		JMenuItem goonGame = new JMenuItem("读取存档(F2)");
 		goonGame.addActionListener(listener);
 		goonGame.setActionCommand("goonGame");
-		goonGame.setEnabled(false);
+		goonGame.setEnabled(true);
 		// 菜单项——保存游戏
 		JMenuItem saveGame = new JMenuItem("保存游戏(F3)");
 		saveGame.addActionListener(listener);
