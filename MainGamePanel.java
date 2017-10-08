@@ -1,4 +1,4 @@
-package thewaroftank.gui;
+package bin.gui;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -7,16 +7,17 @@ import java.util.Vector;
 
 import javax.swing.JPanel;
 
-import thewaroftank.config.Config;
-import thewaroftank.program.Bullet;
-import thewaroftank.program.ElementFactory;
-import thewaroftank.program.Players;
-import thewaroftank.program.Tank;
-import thewaroftank.program.enums.Direction;
+import bin.Bullet;
+import bin.ElementFactory;
+import bin.Players;
+import bin.Tank;
+import bin.enums.Direction;
+import config.Config;
 
 /**
  * 游戏操作主面板绘图类
- * @author Yun-Long
+ * 
+ * @author WuYaoLong
  *
  */
 public class MainGamePanel extends JPanel implements Runnable {
@@ -42,6 +43,7 @@ public class MainGamePanel extends JPanel implements Runnable {
 		if(mgp == null) {
 			mgp = new MainGamePanel();
 			mgp.setBackground(Config.PANEL_BG_COLOR);
+			System.out.println("--->构造MainGamePanel<---");
 		}
 		return mgp;
 	}
@@ -102,14 +104,17 @@ public class MainGamePanel extends JPanel implements Runnable {
 	 * 玩家剩余命数,当前得分,总分和历史最高分;当前关卡,剩余PC坦克数
 	 */
 	private void drawGameInfo(Graphics gps) {
-		//数据准备(固定不变)
+		//数据准备
 		int life1 = pl1.getLifes();
 		int score1 = pl1.getScore();
 		int life2 = pl2.getLifes();
 		int score2 = pl2.getScore();
-		int lv = ElementFactory.level;
+		int max = Config.maxScore;
+		max = max>score1+score2?max:score1+score2;
+		int lv = ElementFactory.createEF().getLevel();
 		int tkNums = set_B.size()==0?0:set_T.size()-2;
-		tkMode.setDirection(Direction.RIGHT); tkMode.setY(10);
+		tkMode.setColor(dataColor);
+		tkMode.setDirection(Direction.RIGHT);
 		tkMode.setWidth(17); tkMode.setHigh(20);
 		gps.setFont(new Font("楷体", Font.BOLD, 20));
 		//开始画
@@ -123,7 +128,7 @@ public class MainGamePanel extends JPanel implements Runnable {
 		gps.drawString("当前:", 20, 590);
 		gps.drawString("敌人:", 655, 590);
 		gps.setColor(dataColor);
-		tkMode.setColor(dataColor);
+		tkMode.setY(10);
 		tkMode.setX(75); tkMode.draw(gps);
 		gps.drawString(" X"+life1, 95, 25);
 		gps.drawString(score1+"", 185, 25);
@@ -131,10 +136,10 @@ public class MainGamePanel extends JPanel implements Runnable {
 		gps.drawString(" X"+life2, 345, 25);
 		gps.drawString(score2+"", 435, 25);
 		gps.drawString(score1+score2+"", 555, 25);
-		gps.drawString(score1+score2+"", 705, 25); //数据文件中读取
+		gps.drawString(max+"", 705, 25);
 		gps.drawString("第 "+lv+" 关", 85, 590);
-		tkMode.setY(575); tkMode.setX(715);
-		tkMode.setColor(dataColor); tkMode.draw(gps);
+		tkMode.setY(575);
+		tkMode.setX(715); tkMode.draw(gps);
 		gps.drawString(" X"+tkNums, 735, 590);
 	}
 	
@@ -157,6 +162,14 @@ public class MainGamePanel extends JPanel implements Runnable {
 			}catch(Exception e){}
 		}
 		System.out.println("--->gameAreaDraw线程结束<---");
+	}
+
+	public void setPl1(Players pl1) {
+		this.pl1 = pl1;
+	}
+
+	public void setPl2(Players pl2) {
+		this.pl2 = pl2;
 	}
 	
 }
