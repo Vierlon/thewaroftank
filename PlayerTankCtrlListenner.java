@@ -1,17 +1,17 @@
-package thewaroftank.gui;
+package bin.gui;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
-import thewaroftank.config.Config;
-import thewaroftank.program.Tank;
-import thewaroftank.program.enums.Direction;
-import thewaroftank.program.enums.Player;
+import bin.Tank;
+import bin.enums.Direction;
+import bin.enums.Player;
+import config.Config;
 
 /**
  * 玩家坦克移动,开火事件的开关控制
  * 
- * @author Yun-Long
+ * @author WuYaoLong
  *
  */
 public class PlayerTankCtrlListenner implements KeyListener {
@@ -26,6 +26,7 @@ public class PlayerTankCtrlListenner implements KeyListener {
 		} else {
 			tk = Config.TANK_SET.get(1);
 		}
+		System.out.println("--->构造PlayerTankCtrlListenner-"+pl+"<---");
 	}
 
 	/**
