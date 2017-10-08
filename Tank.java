@@ -1,22 +1,28 @@
-package thewaroftank.program;
+package bin;
 
+import java.applet.Applet;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.io.Serializable;
 import java.util.Random;
 
-import thewaroftank.config.Config;
-import thewaroftank.gui.GameControlListener;
-import thewaroftank.program.Players;
-import thewaroftank.program.enums.BulletMode;
-import thewaroftank.program.enums.Direction;
+import bin.Players;
+import bin.enums.BulletMode;
+import bin.enums.Direction;
+import bin.gui.GameControlListener;
+import config.Config;
 
 /**
  * 坦克类
  * 
- * @author Yun-Long
+ * @author WuYaoLong
  */
-public class Tank extends GameElements implements Runnable {
+public class Tank extends GameElements implements Runnable,Serializable {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2017100721L;
 	private int speed; // 移动速度
 	private boolean moveEnable; // 移动控制,true为可移动
 	private boolean fireEnable; // 射击控制,true为可射击
@@ -25,6 +31,7 @@ public class Tank extends GameElements implements Runnable {
 	private Players owner = null; // 坦克所有者,PC坦克为null
 	private Random rd = Config.RD; //获随机数生成器
 	private int count = 1; //自动开火控制计数器
+	private int initHP = 1; //坦克初始生命值
 
 	/**
 	 * 无参构造方法
@@ -55,12 +62,14 @@ public class Tank extends GameElements implements Runnable {
 	 */
 	public Tank(int x, int y, int health, int speed, boolean moveEnable, boolean fireEnable, Color color,
 			Direction direction) {
+		this();
 		this.setX(x);
 		this.setY(y);
 		this.setHealth(health);
 		this.setColor(color);
 		this.setWidth(Config.TANK_W_UP);
 		this.setHigh(Config.TANK_H_UP);
+		this.initHP = health;
 		this.speed = speed;
 		this.moveEnable = moveEnable;
 		this.fireEnable = fireEnable;
@@ -102,6 +111,9 @@ public class Tank extends GameElements implements Runnable {
 		blt.setVisible(true); //可见
 		Config.BULLETS_SET.add(blt); // 子弹初始化完成,添加进集合由绘图线程绘图
 		new Thread(blt).start(); //启动自动移动
+		if(this.owner != null && Config.SHEJI != null) {
+			Applet.newAudioClip(Config.SHEJI).play(); //播放射击声音
+		}
 	}
 
 	/**
@@ -204,6 +216,14 @@ public class Tank extends GameElements implements Runnable {
 				g.fill3DRect(x + H / 2 + W / 4, y + W / 2 - W / 32, (H / 2 - W / 4) * 3 / 2, W / 16, true);
 			}
 		}
+		if(this.owner != null) { //画玩家标识
+			g.drawString(this.getOwner().getPL().toString(), x+H/5, y+H+27);
+		}
+		if(this.getHealth() > 0) { //画血条
+			g.setColor(Color.RED);
+			g.drawRect(x-H/2+this.getWidth()/2, y+H+10, H, 5);
+			g.fillRect(x-H/2+this.getWidth()/2, y+H+10, H*this.getHealth()/this.initHP, 5);
+		}
 	}
 	
 	/**
@@ -248,7 +268,6 @@ public class Tank extends GameElements implements Runnable {
 			}
 		}
 		Config.TANK_SET.remove(this); //PC坦克死亡后从集合中移除自己
-//		ElementFactory.num--;
 		System.out.println("删除死亡坦克!剩余数量= " + (Config.TANK_SET.size()-2)); //测试坦克删除
 	}
 
