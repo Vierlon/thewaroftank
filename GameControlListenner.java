@@ -1,5 +1,6 @@
-package thewaroftank.gui;
+package bin.gui;
 
+import java.applet.Applet;
 import java.awt.Cursor;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -9,20 +10,24 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.File;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 
-import thewaroftank.config.Config;
-import thewaroftank.program.ElementFactory;
-import thewaroftank.program.Players;
-import thewaroftank.program.Tank;
-import thewaroftank.program.enums.Direction;
-import thewaroftank.program.enums.Player;
+import bin.ElementFactory;
+import bin.Players;
+import bin.Tank;
+import bin.enums.Direction;
+import bin.enums.Player;
+import config.Config;
+import config.RW_GameConfig;
+import config.RW_GameData;
 /**
- * 游戏窗口事件侦听类,同时对玩家生命进行监控
- * @author Yun-Long
+ * 游戏窗口事件侦听类,同时对玩家生命等状态进行监控
+ * 
+ * @author WuYaoLong
  *
  */
 public class GameControlListener implements Runnable, KeyListener, MouseListener,
@@ -30,6 +35,8 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 
 	public static volatile boolean flag; //GameOver标记,用于终止线程
 	public static volatile boolean isPause; //游戏暂停标识
+	public static volatile boolean isDoubleMan; //是否双人游戏
+	public static volatile boolean isReaded = false; //是否读档游戏
 	public static volatile boolean p1_up_state = false; //玩家1移动控制
 	public static volatile boolean p1_down_state = false;
 	public static volatile boolean p1_left_state = false;
@@ -38,26 +45,27 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 	public static volatile boolean p2_down_state = false;
 	public static volatile boolean p2_left_state = false;
 	public static volatile boolean p2_right_state = false;
-	public volatile long p1_fireTime = 0; //玩家1射击间隔控制
-	public volatile long p2_fireTime = 0; //玩家2射击间隔控制
 	public static Players PL1 = new Players(Player.PL1); //玩家1对象
 	public static Players PL2 = new Players(Player.PL2); //玩家2对象
+	public volatile long p1_fireTime = 0; //玩家1射击间隔控制
+	public volatile long p2_fireTime = 0; //玩家2射击间隔控制
 	private Tank tank_PL1; //作为玩家1坦克引用
 	private Tank tank_PL2; //作为玩家2坦克引用
-	private boolean isDoubleMan; //是否双人游戏
-//	private boolean f2 = false; //快捷键F2和菜单对应功能的启用开关
+	private PlayerTankCtrlListenner ptcl1 = null; //玩家1操作侦听器
+	private PlayerTankCtrlListenner ptcl2 = null; //玩家2操作侦听器
 	private boolean f3 = false; //快捷键F3,F4和菜单对应功能的启用开关
 	private boolean f5 = false; //快捷键F5和菜单对应功能的启用开关
 	private boolean dragEnable = false; //鼠标拖动开关
 	private Point oldPoint; //拖动前鼠标位置
 	private Point newPoint; //拖动结束鼠标位置
 	private JFrame frame = GameFrame.getGameFrame(); //游戏窗口引用
-	private JPopupMenu gameMenu = GameMenu.showMenu(); //弹出菜单引用
+	private JPopupMenu gameMenu = null; //弹出菜单引用
 	private MainGamePanel gameArea = MainGamePanel.showGameArea(); //游戏区域面板引用
 	private ElementFactory factory = ElementFactory.createEF(); //PC坦克工厂引用
 	private Thread gameAreaDraw = null; //游戏区域绘图线程引用
 	private Thread productPCTK = null; //PC坦克工厂生产线程引用
 	private Thread playersListen = null; //玩家侦听线程引用
+	private volatile File gameData = new File(Config.DATA_PATH+"GameData.dat"); //游戏数据存档文件
 	private static GameControlListener gcl = null; //本侦听器唯一对象引用
 	
 	private GameControlListener() {}
@@ -69,6 +77,7 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 	public static GameControlListener getGameCL() {
 		if(gcl == null) {
 			gcl = new GameControlListener();
+			System.out.println("--->构造GameControlListener<---");
 		}
 		return gcl;
 	}
@@ -80,7 +89,7 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 	public void actionPerformed(ActionEvent event) {
 		switch (event.getActionCommand()) {
 		case "newGame":
-			gcl.newGame(); //些调用方法,使用this无效(为什么会产生NullPointerExcption)
+			gcl.newGame(); //这里调用方法,使用this无效(为什么会产生NullPointerExcption)
 			break;
 		case "goonGame":
 			gcl.goonGame();
@@ -138,6 +147,9 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 			}
 			break;
 		case KeyEvent.VK_F8:
+			if(gameMenu == null) { //若为第一次调用则赋值引用
+				gameMenu = GameMenu.showMenu();
+			}
 			gameMenu.show(frame,15,35);
 			break;
 		}
@@ -212,49 +224,90 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 			if(value!=JOptionPane.YES_OPTION){
 				return; 
 			}
-			 //选择取消则设置重新初始化游戏
+			 //选择确定则设置重新初始化游戏
 			System.out.println("--->重新开始游戏<---");
-			flag = false;
-			for(int i = 0; i < Config.TANK_SET.size(); i ++) {
-				try {
-					Config.TANK_SET.get(i).setHealth(0);
-				} catch (Exception e) {}
-			}
-			try {
-				Thread.sleep(300);
-				while(productPCTK.isAlive()) {
-					System.out.println("--->等待productPCTK线程结束<---");
-					productPCTK.join();
-				}
-			} catch (Exception e) {}
-			tank_PL1 = null; tank_PL2 = null; isDoubleMan = false;
-			p1_up_state = false;p1_down_state = false;
-			p1_left_state = false;p1_right_state = false;
-			p2_up_state = false;p2_down_state = false;
-			p2_left_state = false;p2_right_state = false;
+			gcl.endGame(); //中止当前游戏
 		}
-		Config.TANK_SET.clear();
-		Config.BULLETS_SET.clear();
-		flag = true; isPause = false; ElementFactory.level = 1; //重置游戏控制标记
-		tank_PL1 = factory.getPlayerTank(PL1); //初始化玩家坦克(包括PL2的)
-		frame.addKeyListener(new PlayerTankCtrlListenner(Player.PL1)); //注册坦克控制侦听器
-		frame.remove(StartPanel.showStartPanel()); //移除开始面板
-		frame.add(gameArea); //添加主游戏面板
-		frame.setVisible(true); //显示游戏面板
-		gameAreaDraw = new Thread(gameArea);
-		gameAreaDraw.setName("gameAreaDraw");
-		gameAreaDraw.start(); //创建并启动绘图线程
-		productPCTK = new Thread(factory);
-		productPCTK.setName("productPCTK");
-		productPCTK.start(); //创建并启动PC坦克工厂线程
-		playersListen = new Thread(gcl);
-		playersListen.setName("playersListen");
-		playersListen.start(); //创建并启动玩家生命和关卡数监听线程
-		gameMenu.getComponent(2).setEnabled(f3 = true);
-		gameMenu.getComponent(3).setEnabled(true);
-		gameMenu.getComponent(4).setEnabled(f5 = true);
+		gcl.initGame(); //初始化游戏
 		System.out.println("--->初始化完成,游戏开始<---");
 	}
+	
+	/**
+	 * 结束(中止)当前游戏方法
+	 */
+	private void endGame() {
+		flag = false; //设置游戏结束标记
+		try { //将所有坦克生命置0(防止重新开始游戏后还有隐藏坦克)
+			for(int i = 0; i < Config.TANK_SET.size(); i ++) {
+				Config.TANK_SET.get(i).setHealth(0);
+			}
+		} catch (Exception e) {}
+		try {
+			Thread.sleep(100);
+			while(productPCTK.isAlive()) {
+				System.out.println("--->等待productPCTK线程结束<---");
+				productPCTK.interrupt(); //中断可能的休眠状态
+				productPCTK.join(); //等待线程结束
+			}
+		} catch (Exception e) {}
+		Config.TANK_SET.clear(); //清空坦克
+		Config.BULLETS_SET.clear(); //清空子弹
+		PL2.setLifes(0); PL2.setScore(0); //初始化PL2数据
+		frame.removeKeyListener(this.ptcl1); //移除侦听器
+		frame.removeKeyListener(this.ptcl2);
+		tank_PL1 = null; tank_PL2 = null; isDoubleMan = false;
+		p1_up_state = false;p1_down_state = false;
+		p1_left_state = false;p1_right_state = false;
+		p2_up_state = false;p2_down_state = false;
+		p2_left_state = false;p2_right_state = false;
+		gameMenu.getComponent(2).setEnabled(f3 = false); //使相应菜单项和功能键不可用
+		gameMenu.getComponent(3).setEnabled(false);
+		gameMenu.getComponent(4).setEnabled(f5 = false);
+	}
+	
+	/**
+	 * 初始化游戏
+	 */
+	private void initGame() {
+		flag = true; //重新初始化游戏控制标记
+		if(gameMenu == null) {
+			gameMenu = GameMenu.showMenu(); //加载游戏菜单
+		}
+		if(!isReaded) { //如果为读档游戏则无需生成新的玩家坦克及关卡
+			isDoubleMan = false;
+			factory.setLevel(1);
+			tank_PL1 = factory.getPlayerTank(PL1); //初始化玩家坦克(包括PL2的)
+		}else {
+			tank_PL1 = Config.TANK_SET.get(0);
+			tank_PL1.setFireEnable(false);
+			tank_PL2 = Config.TANK_SET.get(1);
+			tank_PL2.setFireEnable(false);
+		}
+		frame.addKeyListener(ptcl1 = new PlayerTankCtrlListenner(Player.PL1)); //注册坦克1控制侦听器
+		if(GameControlListener.isDoubleMan) {
+			frame.addKeyListener(ptcl2 = new PlayerTankCtrlListenner(Player.PL2)); //注册坦克2控制侦听器
+			gameMenu.getComponent(4).setEnabled(f5 = false); //设置菜单项"双人游戏"和快捷键F5可用
+		}else {
+			gameMenu.getComponent(4).setEnabled(f5 = true); //设置菜单项"双人游戏"和快捷键F5可用
+		}
+		gameMenu.getComponent(2).setEnabled(f3 = true); //设置菜单项"保存游戏"和快捷键F3可用
+		gameMenu.getComponent(3).setEnabled(true); //设置菜单项"保存退出"可用
+		frame.remove(StartPanel.showStartPanel()); //移除开始面板
+		frame.add(gameArea); //添加游戏主面板
+		frame.setVisible(true); //显示游戏面板
+		gameAreaDraw = new Thread(gameArea); //创建并启动绘图线程
+		gameAreaDraw.setName("gameAreaDraw");
+		gameAreaDraw.start();
+		productPCTK = new Thread(factory); //创建并启动PC坦克工厂线程
+		productPCTK.setName("productPCTK");
+		productPCTK.start();
+		playersListen = new Thread(gcl); //创建并启动玩家状态和关卡监听线程(控制游戏结束)
+		playersListen.setName("playersListen");
+		playersListen.start();
+		GameControlListener.isPause = false;
+		Applet.newAudioClip(Config.KAISHI).play(); //播放游戏开始声音
+	}
+	
 	/**
 	 * 设置游戏暂停方法
 	 */
@@ -269,7 +322,46 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 	 * <li>调用数据读取类从文件中读取保存的游戏数据
 	 */
 	private void goonGame() { //F2
-		
+		//1.设置游戏暂停
+		GameControlListener.isPause = true;
+		//2.检查数据文件是否存在,不存在则返回警告后继续游戏
+		if(!gameData.exists()) {
+			JOptionPane.showMessageDialog(frame,"游戏数据存档不存在!","警告",JOptionPane.WARNING_MESSAGE);
+			GameControlListener.isPause = false;
+			return; 
+		}
+		//3.若游戏已开始则中止当前游戏进程,否则下一步
+		if(tank_PL1 != null) {
+			this.endGame();
+		}
+		//4.读取存档中的游戏数据,读取失败则返回弹窗确认
+		if(!RW_GameData.load(gameData)) {
+			JOptionPane.showMessageDialog(frame, "读取数据存档失败!请重试或重新开始游戏!", "错误", JOptionPane.ERROR_MESSAGE);
+			Config.TANK_SET.clear(); //清除可能读取到的游戏数据
+			Config.BULLETS_SET.clear();
+			PL2.setLifes(0); PL2.setScore(0);
+			frame.remove(gameArea); //移除游戏区域
+			frame.add(StartPanel.showStartPanel()); //重新添加欢迎界面
+			return;
+		}
+		//5.读取成功初始化相关数据并启动游戏
+		GameControlListener.isReaded = true; //设置为读档模式
+		GameControlListener.flag = true; //设置游戏为可开始
+		 //启动已显示的PC坦克和子弹的移动线程
+		for(int i = 2;i < Config.TANK_SET.size();i ++) {
+			Tank tk = Config.TANK_SET.get(i);
+			if(tk.isVisible()) {
+				new Thread(tk).start();
+			}
+		}
+		for(int i = 0;i < Config.BULLETS_SET.size();i ++) {
+			new Thread(Config.BULLETS_SET.get(i)).start();
+		}
+		this.initGame(); //初始化三大主线程
+		GameControlListener.isPause = true;
+		JOptionPane.showConfirmDialog(frame, "读档成功,确认后开始游戏!", "提示", JOptionPane.PLAIN_MESSAGE);
+		GameControlListener.isPause = false;
+		System.out.println("--->初始化完成,游戏开始<---");
 	}
 	/**
 	 * 保存游戏事件处理过程
@@ -277,7 +369,14 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 	 */
 	private void saveGame() { //F3 , F4
 		if(f3) {
-			
+			GameControlListener.isPause = true;
+			if(RW_GameData.save(gameData)) {
+				JOptionPane.showMessageDialog(frame, "存档成功!", "提示", JOptionPane.PLAIN_MESSAGE);
+				GameControlListener.isPause = false;
+				return;
+			}
+			JOptionPane.showMessageDialog(frame, "存档失败!请重试...", "警告", JOptionPane.WARNING_MESSAGE);
+			GameControlListener.isPause = false;
 		}
 	}
 	/**
@@ -287,54 +386,48 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 		if(f5) {
 			tank_PL2 = factory.getPlayerTank(PL2);
 			isDoubleMan = true; //双人游戏状态
-			frame.addKeyListener(new PlayerTankCtrlListenner(Player.PL2)); //注册坦克控制侦听器
+			frame.addKeyListener(ptcl2 = new PlayerTankCtrlListenner(Player.PL2)); //注册坦克2控制侦听器
 			gameMenu.getComponent(4).setEnabled(f5=false); //P2玩家添加后对应菜单与快捷键设为不可用
+			Applet.newAudioClip(Config.TIANJIA).play(); //播放添加玩家声音
 			System.out.println("--->添加玩家PL2成功<---");
 		}
 	}
 	/**
-	 * 退出游戏事件处理过程
-	 * @param str 退出前弹出的提示信息
+	 * 结束游戏事件处理过程
+	 * @param str 结束前弹出的提示信息
 	 */
 	private void exit(String str){ //ESC 弹出一个确认提示窗口（参数：所属对象，消息内容，标题，窗口类型）
+		GameControlListener.isPause = true;
 		int value=JOptionPane.showConfirmDialog(frame,str,"提示",JOptionPane.YES_NO_OPTION);
 		if(value==JOptionPane.YES_OPTION){//选择"确认"后退出
 			System.out.println("--->窗口关闭,游戏结束!谢谢使用,再见<---");
+			if(!RW_GameConfig.save()) {
+				JOptionPane.showMessageDialog(frame, "保存配置信息失败!", "警告", JOptionPane.WARNING_MESSAGE);
+			}
 			System.exit(0);
-		}else if(tank_PL1 != null && !flag){ //回到初始界面并重置所有容器和标记
-			frame.remove(gameArea);
-			frame.add(StartPanel.showStartPanel());
-			Config.TANK_SET.clear();
-			System.out.println("清除TANK_SET中坦克,结果="+Config.TANK_SET.size());
-			Config.BULLETS_SET.clear();
-			System.out.println("清除BULLETS_SET中子弹,结果="+Config.BULLETS_SET.size());
-			tank_PL1 = null; tank_PL2 = null; isDoubleMan = false;
-			gameMenu.getComponent(2).setEnabled(f3 = false);
-			gameMenu.getComponent(3).setEnabled(false);
-			gameMenu.getComponent(4).setEnabled(f5 = false);
-			p1_up_state = false;p1_down_state = false;
-			p1_left_state = false;p1_right_state = false;
-			p2_up_state = false;p2_down_state = false;
-			p2_left_state = false;p2_right_state = false;
+		}else if(tank_PL1 != null && !flag){ //选择取消回到初始界面并重置所有容器和标记
+			frame.remove(gameArea); //移除游戏区域
+			frame.add(StartPanel.showStartPanel()); //添加欢迎界面
+			this.endGame(); //结束当前游戏进程
 		}
+		GameControlListener.isPause = false;
 	}
 	
 	/**
-	 * 游戏结束时调用显示面板方法,true为正常通关,false为所有玩家生命归0
-	 * <li>该方法暂未实现
-	 * @param type
+	 * 游戏正常结束时调用弹窗提示
+	 * 
+	 * @param type 结束类型,true为正常通关,false为所有玩家生命归0
 	 */
 	public void gameOver(boolean type) {
 		if(type) {
 			System.out.println("--->恭喜您通关了,游戏结束<---"); //调用通关结束面板
 			this.exit("恭喜您通关了,游戏结束!是否退出?");
 		}else {
-//			Config.TANK_SET.clear();
 			System.out.println("--->玩家被消灭,游戏结束<---"); //调用被消灭结束面板
-			this.exit("玩家被消灭,游戏结束!是否退出");
+			this.exit("玩家被消灭,游戏结束!是否退出?");
 		}
 	}
-	
+
 	/**
 	 * 玩家生命和关卡监控线程
 	 */
@@ -355,7 +448,7 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 				this.gameOver(false);
 				break;
 			}
-			if(ElementFactory.level>16) { //消灭所有坦克,通关结束(最大16)
+			if(factory.getLevel()>16) { //消灭所有坦克,通关结束(最大16)
 				GameControlListener.flag = false;
 				this.gameOver(true);
 				break;
@@ -392,7 +485,7 @@ public class GameControlListener implements Runnable, KeyListener, MouseListener
 			if(isDoubleMan&&(p2_up_state||p2_down_state||p2_left_state||p2_right_state)) {
 				tank_PL2.move();
 			}
-			long delay = ElementFactory.level<8?600:(ElementFactory.level<12?500:400);
+			long delay = factory.getLevel()<8?600:(factory.getLevel()<12?500:400);
 			if(tank_PL1.isFireEnable() && System.currentTimeMillis()-p1_fireTime>=delay) {
 				tank_PL1.fire();
 				p1_fireTime = System.currentTimeMillis();
